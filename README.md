@@ -14,6 +14,10 @@
         - Namespace 名（例：mynamespace）
         - Connection String（DefaultFullSharedAccessSignature）
 
+Endpoint=sb://mynamespace.servicebus.windows.net/;
+SharedAccessKeyName=DefaultFullSharedAccessSignature;
+SharedAccessKey=XXXXXXXXXXXXXXXXXXXXXX
+
 ✅ プラットフォーム設定：
 - iOS → APNs 証明書
 - Android → FCM Server Key
