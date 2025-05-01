@@ -42,11 +42,11 @@ openssl s_client -connect mynamespace.servicebus.windows.net:443
 ✅ Maven インストール（依存管理）
 
 pom.xml 依存設定：
-<dependency>
+“<dependency>
     <groupId>com.windowsazure</groupId>
     <artifactId>Notification-Hubs-java-sdk</artifactId>
     <version>1.1.0</version>
-</dependency>
+</dependency>”
 
 ------------------------------------
 
