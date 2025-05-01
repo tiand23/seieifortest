@@ -52,7 +52,7 @@ pom.xml 依存設定：
 ------------------------------------
 
 2.3 Java コード例（引数対応版）
-
+```java
 import com.windowsazure.messaging.*;
 
 public class NotificationTest {
@@ -77,7 +77,7 @@ public class NotificationTest {
         }
     }
 }
-
+```
 ------------------------------------
 
 2.4 ビルド・実行コマンド
