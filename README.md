@@ -83,16 +83,19 @@ public class NotificationTest {
 2.4 ビルド・実行コマンド
 
 Maven ビルド：
+```
 mvn clean compile
 mvn package
-
+```
 Maven 実行：
+```
 mvn exec:java -Dexec.mainClass="NotificationTest" -Dexec.args="<ConnectionString> <HubName> \"<Payload>\""
-
+```
 手動コンパイル・実行：
+```
 javac -cp .;path\to\Notification-Hubs-java-sdk-1.1.0.jar NotificationTest.java
 java -cp .;path\to\Notification-Hubs-java-sdk-1.1.0.jar NotificationTest "<ConnectionString>" "<HubName>" "{\"aps\":{\"alert\":\"Hello from Java!\"}}"
-
+```
 ------------------------------------
 
 🏗 入力パラメータ例
