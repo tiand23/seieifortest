@@ -1,0 +1,73 @@
+# 案件A・案件B 処理フロー（修正版・報告用）
+
+## ✅ 案件 A：事前スロット割り当て + スルー機能 + slot_id管理
+
+### ⚙️ 処理フロー
+
+1. **スロット設定事前登録**  
+　システム開始時、slot_master テーブルにスロット情報（slot_id、start_time、end_time、max_send_count、is_active）を登録する。
+
+2. **ファイル受信・通知登録時**  
+　別バッチから通知ファイルが不定期に到着。ファイル到着後、通知データを読み込み、info テーブルに登録する。  
+　この際、slot_master の is_active および slot_id 昇順を参照し、現在時刻から最も近い有効スロット（is_active = true）を基点に、各スロットの max_send_count を上限として順次 info.slot_id を割り当てる。  
+　※ 繰り越し（翌日スロットへの移行）は後続のスルー機能（ステップ5）で対応。
+
+3. **毎時スケジュール起動**  
+　現在時刻に該当する slot_id を判定し、slot_master から max_send_count および is_active を取得する。  
+　is_active = false の場合は、ログを記録してスキップする。
+
+4. **送信対象データ抽出**  
+　info テーブルから slot_id = 現在の slot_id かつ status = '待发送' のデータを、最大 max_send_count 件抽出する。
+
+5. **送信処理**  
+　成功 → info.status を '已发送' に更新し、updated_at を記録する。  
+　失敗 → info.status を '失败' に更新し、send_attempt を +1、last_error を記録する。
+
+6. **スルー機能（オーバーフロー対応）**  
+　現在スロットで未送信のデータが残っている場合、次の有効かつ空きのあるスロット（is_active = true、かつ max_send_count 未達）を検索し、info.slot_id を更新する。  
+　当日の全スロットが上限に達している場合は、翌日最初の有効スロットから繰り越して処理を継続する。
+
+7. **レポート集計**  
+　info.slot_id 単位で送信件数、成功件数、失敗件数を集計する。
+
+---
+
+## ✅ 案件 B：動的スケジューリング + slot_master 制御 + slot_id記録
+
+### ⚙️ 処理フロー
+
+1. **スロット設定事前登録**  
+　システム開始時、slot_master テーブルにスロット情報（slot_id、start_time、end_time、max_send_count、is_active）を登録する。
+
+2. **ファイル受信・通知登録時**  
+　別バッチから通知ファイルが不定期に到着。ファイル到着後、通知データを読み込み、info テーブルに登録する（この段階では slot_id は未設定）。
+
+3. **毎時スケジュール起動**  
+　現在時刻に該当する slot_id を判定し、slot_master から max_send_count および is_active を取得する。  
+　is_active = false の場合は、ログを記録してスキップする。
+
+4. **送信対象データ抽出**  
+　info テーブルから status = '待发送' のデータを created_at 昇順で最大 max_send_count 件抽出する。
+
+5. **送信処理**  
+　成功 → info.status を '已发送' に更新し、slot_id = 現在の slot_id、updated_at を記録する。  
+　失敗 → info.status を '失败' に更新し、send_attempt を +1、slot_id = 現在の slot_id、last_error を記録する。
+
+6. **次スロット・次日繰り越し対応**  
+　当日の全スロットが上限に達している場合、未処理データは翌日最初の有効スロットから順次処理を継続する。
+
+7. **レポート集計**  
+　送信時に記録された slot_id を基に集計する。
+
+---
+
+## 📢 共通の補足ポイント
+
+- **案件Aの特徴**  
+　事前割り当て、優先度管理、高度な調整が可能。
+  
+- **案件Bの特徴**  
+　実装がシンプル、高い耐障害性、公平な処理。
+  
+- **共通要件**  
+　slot_master の事前設計、ファイル到着監視、翌日繰越制御。
