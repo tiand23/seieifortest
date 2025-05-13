@@ -1,0 +1,46 @@
+# 通知送信方式に関する設計および影響報告
+
+## ■ 目的
+
+本資料は、通知機能における **FCM統一配信方式** と **FCM + APNs分離配信方式** の違い、および弊側（Java通知送信側）に与える影響について整理したものです。
+
+---
+
+## ■ 配信構成の2つの選択肢
+
+| 比較項目 | ① FCMを使ってAndroid/iOSへ統一的に配信する方式（推奨） | ② AndroidはFCM、iOSはAPNsを用いる分離方式 |
+|----------|--------------------------------------------------|-----------------------------------------------|
+| **クライアント側実装** | Android / iOS ともに Firebase SDK 経由で `FCMトークン` を取得 | Android → Firebase SDK、iOS → APNsで `APNsトークン` を取得 |
+| **サーバー側が受け取るトークン** | 共通の `fcm_token` | `fcm_token`（Android）+ `apns_token`（iOS） |
+| **送信APIの違い（Java側）** | `sendGcmNativeNotification()` を統一使用 | Android：`sendGcmNativeNotification()`<br>iOS：`sendAppleNativeNotification()`（別実装が必要） |
+| **Azure Notification Hub 設定** | FCMのみ設定すればOK | FCM + APNs 両方の設定が必要 |
+| **通知データ（payload）設計** | 共通JSONでOK | iOS/APNs向けに専用形式を用意する必要あり |
+| **platform情報の利用** | 任意 | 必須（どの方式で送信すべきかの判断に使用） |
+| **実装・保守コスト** | 低（統一で簡易） | 高（トークン管理・実装が複雑） |
+
+---
+
+## ■ Java通知送信側への影響
+
+| 項目 | 影響 |
+|------|------|
+| Java通知送信テスト | 現状の実装（FCMトークン使用）のままで iOS / Android 両方に通知可能 |
+| platform判定の必要性 | 現時点では不要（すべてFCMトークンを通じて配信） |
+| トークンの種類対応 | 現在は `fcm_token` のみ使用。将来的に `apns_token` 追加で拡張可 |
+| 配信ログ記録 | 通知テンプレートとの紐付け記録はすでに実装済。送信先トークン種別（FCM/APNs）を記録するフィールドも追加可能 |
+| テーブル構成への影響 | 汎用的な構成で問題なし。platform / apns_token は拡張用として設計済み |
+
+---
+
+## ■ 推奨テーブル構成案（push_tokens）
+
+```sql
+CREATE TABLE push_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(64),
+    platform VARCHAR(16),         -- 'android' or 'ios'
+    fcm_token TEXT,
+    apns_token TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
