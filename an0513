@@ -44,3 +44,8 @@ CREATE TABLE push_tokens (
     is_active BOOLEAN DEFAULT TRUE,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+https://repo1.maven.org/maven2/com/windowsazure/Notification-Hubs-java-sdk/0.4.2/
+最初は私もMavenを使おうと思っていましたが、ローカル環境ではMavenの接続がうまくいかない可能性があったため、jarファイルを自分でダウンロードして対応しました。
+もし可能であれば、Panさんの方で疎通確認用のコードをご提供いただけると大変助かります。Panさんの技術力は非常に高いので、とても参考になります。
