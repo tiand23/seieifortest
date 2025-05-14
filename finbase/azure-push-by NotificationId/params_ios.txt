@@ -1,0 +1,5 @@
+hubName=your-hub-name
+connectionString=Endpoint=sb://xxxx.servicebus.windows.net/;SharedAccessKeyName=DefaultFullSharedAccessSignature;SharedAccessKey=xxxxxx
+notificationId=通知ID0001
+platform=ios
+jsonPayload={"aps":{"alert":"これは通知ID経由の iOS Push!","sound":"default"}}

@@ -1,0 +1,5 @@
+hubName=xxxx
+connectionString=xxx
+deviceToken=xxx
+platform=android
+jsonPayload={"data":{"message":"来自 FCM 的推送"}}
