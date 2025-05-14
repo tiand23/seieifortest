@@ -1,4 +1,0 @@
-hubName=Confidential-fbf-j-e-test-s1-0001-NTFHUB-01
-connectionString=Endpoint=sb://xxxx.servicebus.windows.net/;SharedAccessKeyName=DefaultFullSharedAccessSignature;SharedAccessKey=xxxx
-fcmToken=eRQa1pX7TUOaTwn3xJgY3T:APA91bHxxxxx...
-jsonPayload={"data":{"message":"这是测试通知 from VS Code!"}}
