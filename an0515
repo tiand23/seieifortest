@@ -1,0 +1,106 @@
+# 共通関数設計書：Ostiaries署名生成関数
+
+---
+
+## 1. 基本情報
+
+| 項目         | 内容 |
+|--------------|------|
+| 関数名称     | `generateOstiariesSignature` |
+| 所属モジュール | 共通ライブラリ（署名関連） |
+| 概要         | APIリクエスト送信時に必要な署名（JWS）を生成し、HTTPヘッダに設定するための署名文字列を返却する共通関数。<br>Ostiaries認証方式に準拠する。 |
+| 利用タイミング | Ostiaries認証を必要とするAPIをコールする直前 |
+
+---
+
+## 2. I/F定義
+
+### 2.1 入力（引数）
+
+| No | 項目名       | 物理名     | 型      | 必須 | 備考 |
+|----|--------------|------------|----------|------|------|
+| 1  | アクセスキー | accessKey  | `String` | 必須 | 署名作成に使用する共通鍵（共有鍵） |
+| 2  | POSTデータ   | postData   | `Object` | 必須 | リクエストボディに相当するJSONオブジェクト。内部でSHA-512のダイジェストを生成するために使用。 |
+
+### 2.2 出力（戻り値）
+
+| 項目名        | 物理名 | 型      | 備考 |
+|---------------|--------|----------|------|
+| 署名済JWS文字列 | result | `String` | 生成された署名付きJWS（X-Ostiaries-Signature用） |
+
+---
+
+## 3. 使用例（呼び出し側）
+
+```java
+String accessKey = "5fek0Kw768SvpKF...";
+Map<String, Object> postData = new HashMap<>();
+postData.put("identifier", "DEV");
+postData.put("customer_numbers", Arrays.asList("09011112222"));
+
+String signature = SignatureUtil.generateOstiariesSignature(accessKey, postData);
+httpRequest.setHeader("X-Ostiaries-Signature", signature);
+
+## 4. 処理概要
+
+本関数は、Ostiaries認証が必要なAPIに対してHTTPリクエストを送信する際、リクエストボディに対する署名（JWS）を生成するための共通関数である。
+
+署名対象となるPOSTリクエストの本文（JSON）からSHA-512によるダイジェスト値を生成し、そのダイジェストを含むJWSを構築する。JWSの署名アルゴリズムにはHMAC-SHA512を使用し、署名鍵としては外部から付与されたアクセスキー（共通鍵）を用いる。生成されたJWSは、HTTPヘッダー `X-Ostiaries-Signature` に設定され、後続のAPIコールに利用される。
+
+なお、本関数はJWSの生成のみを責務とし、HTTP通信処理自体は含まない。
+
+---
+
+## 5. 処理手順（アルゴリズム）
+
+| ステップ | 処理内容 |
+|:--------:|:---------|
+| 1 | `postData` をJSON文字列に変換（エスケープなし・UTF-8） |
+| 2 | 上記JSON文字列に対してSHA-512ハッシュを適用し、ダイジェスト値（バイト列）を生成 |
+| 3 | 生成されたダイジェスト値をBase64URL形式にエンコード |
+| 4 | 以下の固定内容でJWSヘッダーを定義：  
+```json
+{"alg":"HS512","typ":"JWT"}
+``` |
+| 5 | 以下の構造でJWSペイロードを定義：  
+```json
+{"digest":"<Base64URLエンコード済みダイジェスト値>"}
+``` |
+| 6 | ヘッダーおよびペイロードをそれぞれBase64URLエンコードし、`.`（ピリオド）で結合（Header.Payload） |
+| 7 | 上記結合文字列に対し、accessKeyを鍵としてHMAC-SHA512による署名を実行し、Base64URLエンコード |
+| 8 | 最終的に、`Header.Payload.Signature` 形式のJWS文字列を生成 |
+| 9 | 生成されたJWSを戻り値として返却（＝HTTPヘッダー `X-Ostiaries-Signature` に設定して使用） |
+
+---
+
+## 6. 処理フロー（文字記述）
+
+1. **POSTデータのJSON文字列変換**  
+   引数 `postData` をUTF-8エンコードでJSON文字列に変換する（エスケープなし）。  
+   例：`{"key":"value","list":[1,2,3]}` の形式。
+
+2. **SHA-512ダイジェスト生成**  
+   変換後のJSON文字列からSHA-512ハッシュを計算し、バイナリ形式のダイジェスト値を取得する。
+
+3. **Base64URLエンコード**  
+   ダイジェスト値をBase64URL形式に変換する。通常のBase64と異なり、以下の変換を行う：  
+   - `+` → `-`  
+   - `/` → `_`  
+   - `=` は除去  
+
+4. **JWSヘッダーの定義**  
+   以下の固定JSONオブジェクトを文字列として用意する：  
+   ```json
+   {"alg": "HS512", "typ": "JWT"}
+5.	JWSペイロードの定義
+生成したダイジェスト値を "digest" フィールドに格納したペイロードオブジェクトを定義する：
+{"digest": "<Base64URL形式のダイジェスト>"}
+6.	ヘッダー・ペイロードのBase64URLエンコード
+上記ヘッダーおよびペイロードをUTF-8エンコード後、Base64URL形式に変換する。
+7.	署名対象文字列の生成
+headerEncoded + "." + payloadEncoded の形式で署名対象文字列を生成する。
+8.	署名生成（HMAC-SHA512）
+ステップ7の文字列を署名対象とし、accessKeyを用いてHMAC-SHA512で署名し、Base64URL形式に変換する。
+9.	JWS最終構成と返却
+header.payload.signature の形式でJWSを組み立て、文字列として返却する。
+呼び出し元では、このJWS文字列を X-Ostiaries-Signature ヘッダーに設定して送信する。
