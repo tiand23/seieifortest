@@ -32,3 +32,41 @@
 ## 3. 結論
 
 > 本プロジェクトでは、全リクエスト DTO に `BaseRequestDto` を継承させる構成とすることで、開発・保守・拡張・品質の各面においてメリットが大きいため、この設計方針を採用いたします。
+
+
+# 📝 BaseRequestDto クラス設計書（日本語）
+
+## 1. クラス概要
+
+| 項目         | 内容 |
+|--------------|------|
+| クラス名     | BaseRequestDto |
+| 種別         | 抽象クラス（abstract class） |
+| 役割・目的   | 各APIのリクエストDTOが継承する共通基底クラス。金融IDなど、共通的に必要な入力項目を保持し、共通部品における汎用的な処理を可能とする。 |
+| 利用対象クラス | 各種API用のDTO（例：NotificationRegisterDto、UserLoginDtoなど） |
+
+---
+
+## 2. クラス構成
+
+```java
+public abstract class BaseRequestDto {
+    private String financialId;
+
+    public String getFinancialId() {
+        return financialId;
+    }
+
+    public void setFinancialId(String financialId) {
+        this.financialId = financialId;
+    }
+}
+
+
+サブクラスの定義例
+public class NotificationRegisterDto extends BaseRequestDto {
+    private String title;
+    private String message;
+    // その他の項目と getter/setter
+}
+
