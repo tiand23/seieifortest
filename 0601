@@ -1,0 +1,36 @@
+現在の共通設計において、
+
+- 各APIのリクエストDTOに対する**共通親クラス（Base DTO）の設計方針**
+- または、共通インタフェース（例：HasRequestInfoなど）の定義
+
+等は存在しておりますでしょうか？
+
+---
+
+### ■ 提案内容
+
+もし、上記のような**共通親DTOクラスが既に存在する場合**は、  
+そのクラスに `financialId` フィールドの追加をご検討いただけますでしょうか。
+
+例：
+```java
+private String financialId;
+
+もし、現在共通のDTO基底クラスが存在しない場合には、
+以下のような BaseRequestDto を新たに定義し、
+今後のリクエストDTOがこれを継承する構成をご提案いたします：
+
+public abstract class BaseRequestDto {
+    private String financialId;
+
+    public String getFinancialId() { return financialId; }
+    public void setFinancialId(String financialId) { this.financialId = financialId; }
+}
+
+この financialId は全APIで必須ではなく、必要な場面のみ使用される想定です。
+そのため、リクエストJSONに当該フィールドが含まれない場合でも、アプリケーションの動作に影響を及ぼさない設計となっております。
+
+■ 背景
+	•	金融IDは一部のAPIで必要となる業務識別情報です。
+	•	共通部品側で Object inDto を受け取り、そこから金融IDを取得する必要がある場面があります。
+	•	DTO構造がバラバラの場合、instanceof やリフレクションでの処理が必要になり、保守性が下がるため、共通構造化を検討しております。
