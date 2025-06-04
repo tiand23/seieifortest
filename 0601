@@ -34,3 +34,8 @@ public abstract class BaseRequestDto {
 	•	金融IDは一部のAPIで必要となる業務識別情報です。
 	•	共通部品側で Object inDto を受け取り、そこから金融IDを取得する必要がある場面があります。
 	•	DTO構造がバラバラの場合、instanceof やリフレクションでの処理が必要になり、保守性が下がるため、共通構造化を検討しております。
+
+wget https://repo1.maven.org/maven2/org/apache/httpcomponents/core5/httpcore5/5.1/httpcore5-5.1.jar
+wget https://repo1.maven.org/maven2/org/apache/httpcomponents/client5/httpclient5/5.1/httpclient5-5.1.jar
+
+java -cp .:azure-push.jar:Notification-Hubs-java-sdk-1.1.0.jar:httpcore5-5.1.jar:httpclient5-5.1.jar AzurePushSender params.txt
