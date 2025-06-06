@@ -22,3 +22,8 @@
 ■ 対応案について
 	1.	（現状維持） 旧SDKを使用し、Notification ID と Tracking ID のみ取得する方法
 	2.	（GitHubソースを取り込み） 新SDKをプロジェクトに組み込み、送信状態まで取得できるようカスタマイズ
+
+実行コマンド
+java -jar azure-rest-push-1.0.0.jar "<connectionString>" "<hubName>" "<deviceToken>" "<platform>" "<message内容>"
+例）
+java -jar azure-rest-push-1.0.0.jar "Endpoint=...;SharedAccessKeyName=...;SharedAccessKey=..." "testhub" "xxxxx" "android" "こんにちは！"
