@@ -45,3 +45,12 @@ java -cp .:azure-push.jar:Notification-Hubs-java-sdk-1.1.0.jar:httpcore5-5.1.jar
 `run.sh`は差し替えてあります。  
 また、必要な2つのjarファイルは`run.sh`と同じフォルダに配置していますので、  
 お手数ですが再度お試しいただけますでしょうか。
+@増田さん @曾田さん
+
+Javaのソースを添付いたします。
+API実行後の戻り値（return）は、nullでない場合は送信を実施したことを示す `NotificationOutcome` オブジェクトになります。
+ただし、現状では `outcome.toString()` をログ出力しており、送信の成功・失敗の詳細なステータス（例：Enqueued等）はログ内容から確認する形となっております。
+
+必要であれば、`NotificationOutcome` の中身（フィールド構成）を追記して、送信結果の状態を明確に判定できるようにすることも可能です。
+
+ご確認のほど、よろしくお願いいたします。
