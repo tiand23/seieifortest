@@ -1,0 +1,43 @@
+import com.windowsazure.messaging.NotificationHub;
+import com.windowsazure.messaging.NotificationOutcome;
+
+public class AzurePushSender {
+    public static void main(String[] args) {
+        if (args.length != 5) {
+            System.out.println("使用方法：java AzurePushSender <hubName> <connectionString> <deviceToken> <platform> <jsonPayload>");
+            System.out.println("例：java AzurePushSender pushhub \"Endpoint=...\" xxxxxx android '{\"data\":{\"message\":\"hello\"}}'");
+            return;
+        }
+
+        String hubName = args[0];
+        String connectionString = args[1];
+        String deviceToken = args[2];
+        String platform = args[3].toLowerCase(); // ios 或 android
+        String jsonPayload = args[4];
+
+        try {
+            NotificationHub hub = new NotificationHub(hubName, connectionString);
+            NotificationOutcome outcome;
+
+            if (platform.equals("android")) {
+                outcome = hub.sendFcmNotification(jsonPayload, deviceToken);
+            } else if (platform.equals("ios")) {
+                outcome = hub.sendAppleNativeNotification(jsonPayload, deviceToken);
+            } else {
+                System.out.println("❌ エラー：対応していないplatformです。ios または android を指定してください。");
+                return;
+            }
+
+            if (outcome != null) {
+                System.out.println("✅ PUSH SUCCESS：" + outcome);
+                System.out.println("✅ 通知ID：" + outcome.getNotificationId());
+                System.out.println("✅ トラッキングID：" + outcome.getTrackingId());
+            } else {
+                System.out.println("❌ ERROR：outcome is null");
+            }
+        } catch (Exception e) {
+            System.err.println("異常：" + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}
