@@ -1,5 +1,0 @@
-hubName=xxxx
-connectionString=xxx
-deviceToken=xxx
-platform=ios
-jsonPayload={"aps":{"alert":"来自 APNs 的推送","sound":"default"}}
