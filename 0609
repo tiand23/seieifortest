@@ -191,5 +191,19 @@ public class AzureRestPushSender {
 
 
 
+## 6.1 処理フロー（ワークフロー詳細）
+
+| ステップ番号 | 処理内容 | 詳細 |
+|--------------|-----------|------|
+| ① | 接続文字列の分解 | `connectionString` をセミコロン (;) で分割し、以下の 3 要素を抽出：<br>・Endpoint<br>・SharedAccessKeyName<br>・SharedAccessKey |
+| ② | プラットフォーム確認 | 引数 `platform` の値が "android" または "ios" であることを確認。不正な値の場合は例外スロー。 |
+| ③ | Content-Type と通知JSON生成 | - platform が `android` の場合：<br>&nbsp;&nbsp;Content-Type = `application/json`<br>&nbsp;&nbsp;Payload = `{ "data": { "message": "xxxx" } }`<br><br>- platform が `ios` の場合：<br>&nbsp;&nbsp;Content-Type = `application/json`<br>&nbsp;&nbsp;Payload = `{ "aps": { "alert": "xxxx" } }` |
+| ④ | URI組立 | Endpoint + Hub名 + `/messages/?direct&api-version=2020-06` を結合して URI を構築。 |
+| ⑤ | SASトークン生成 | 下記の値を用いて SharedAccessSignature を作成：<br>・URI<br>・SharedAccessKeyName<br>・SharedAccessKey<br>※ 有効期限は現在時刻 + 1時間（3600秒） |
+| ⑥ | HTTPリクエスト構築 | HttpClient を使用し、POST リクエストを構築：<br>・URI：④で生成したURI<br>・ヘッダ：<br>　　- Authorization = ⑤で生成したSAS Token<br>　　- Content-Type = ③で生成したContent-Type<br>　　- ServiceBusNotification-Format = platform<br>　　- ServiceBusNotification-DeviceHandle = deviceToken<br>・Body：③で生成したPayload |
+| ⑦ | 通知送信 | HTTP リクエストを送信。結果（HttpResponse）を取得。 |
+| ⑧ | ステータスコード確認 | - ステータスコードが 200〜299 → 成功<br>- それ以外 → 送信失敗とみなす。 |
+| ⑨ | レスポンス返却 | レスポンス本文（HttpResponse.body）を文字列として呼び出し元に返却。 |
+
 
 
