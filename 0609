@@ -1,0 +1,195 @@
+# 共通部品設計書：Azure REST Push送信機能
+
+## 1. 目的
+
+本設計書は、Azure Notification Hub を利用して、Android / iOS 向けにプッシュ通知を送信する共通部品のインタフェースおよび詳細設計を記述する。
+
+## 2. 機能概要
+
+Azure Notification Hub の REST API を使用して、クライアントアプリケーション（Android または iOS）にプッシュ通知を送信する。
+
+## 3. 呼び出し元からの入力
+
+| 項目名（日本語） | 項目名（英語）      | 型       | 必須 | 説明 |
+|------------------|----------------------|----------|------|------|
+| 接続文字列        | `connectionString`   | String   | 必須 | Azure Notification Hub の接続文字列 |
+| 通知ハブ名        | `hubName`            | String   | 必須 | 通知ハブ名 |
+| デバイストークン  | `deviceToken`        | String   | 必須 | 通知対象デバイスのトークン |
+| プラットフォーム  | `platform`           | String   | 必須 | `"android"` または `"ios"` |
+| 通知メッセージ本文 | `message`            | String   | 必須 | 通知で送信するメッセージ本文 |
+
+## 4. 出力
+
+| 項目名（日本語）     | 項目名（英語） | 型     | 説明 |
+|----------------------|----------------|--------|------|
+| レスポンス本文       | `response`     | String | 通知送信後の HTTP レスポンス本文 |
+
+## 5. インタフェース定義
+
+```java
+public interface NotificationSender {
+    /**
+     * Azure Notification Hub 経由でプッシュ通知を送信する
+     * 
+     * @param connectionString 接続文字列
+     * @param hubName 通知ハブ名
+     * @param deviceToken デバイストークン
+     * @param platform プラットフォーム（"android" or "ios"）
+     * @param message 通知本文
+     * @return HTTPレスポンス本文（String）
+     * @throws Exception 送信中に発生したエラー
+     */
+    String sendNotification(
+        String connectionString,
+        String hubName,
+        String deviceToken,
+        String platform,
+        String message
+    ) throws Exception;
+}
+```
+
+## 6. 詳細設計
+
+### 6.1 処理フロー
+
+1. `connectionString` を分解し、`Endpoint`、`SharedAccessKeyName`、`SharedAccessKey` を抽出  
+2. `platform` に応じて、`Content-Type` と通知 JSON ペイロードを構築  
+3. URI および SAS トークンを生成  
+4. `HttpClient` を用いて HTTP POST リクエストを送信  
+5. HTTP レスポンスを `String` で取得し返却  
+
+### 6.2 通知 JSON のフォーマット例
+
+| プラットフォーム | JSON フォーマット例 |
+|------------------|---------------------|
+| android          | `{"data":{"message":"xxxxx"}}` |
+| iOS              | `{"aps":{"alert":"xxxxx"}}`    |
+
+### 6.3 成功判定
+
+- HTTP ステータスコードが `200〜299` の場合を成功とみなす。
+
+## 7. 例外処理
+
+- 入力パラメータが不足している場合：例外をスローする。  
+- SAS トークン生成失敗、HTTP 通信エラー等が発生した場合：例外をスローする。  
+
+## 8. 補足
+
+- SAS トークンは `connectionString` の情報から毎回生成される。  
+- 利用 API バージョン：`2020-06`  
+- 接続先 URI の形式：  
+  `https://{namespace}.servicebus.windows.net/{hubName}/messages/?direct&api-version=2020-06`
+
+
+
+
+
+
+package com.example.push;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.Base64;
+
+public class AzureRestPushSender {
+
+    public static void main(String[] args) {
+        if (args.length != 5) {
+            System.out.println("使い方:");
+            System.out.println("java -jar xxx.jar <connectionString> <hubName> <deviceToken> <platform> <message>");
+            return;
+        }
+
+        String connectionString = args[0];
+        String hubName = args[1];
+        String deviceToken = args[2];
+        String platform = args[3].toLowerCase();
+        String message = args[4];
+
+        String[] parts = connectionString.split(";");
+        String endpoint = "";
+        String sasKeyName = "";
+        String sasKey = "";
+        for (String part : parts) {
+            if (part.startsWith("Endpoint")) {
+                endpoint = part.substring("Endpoint=".length());
+            } else if (part.startsWith("SharedAccessKeyName")) {
+                sasKeyName = part.substring("SharedAccessKeyName=".length());
+            } else if (part.startsWith("SharedAccessKey")) {
+                sasKey = part.substring("SharedAccessKey=".length());
+            }
+        }
+
+        if (endpoint.isEmpty() || sasKeyName.isEmpty() || sasKey.isEmpty()) {
+            System.err.println("❌ connectionString の解析に失敗しました。形式をご確認ください。");
+            return;
+        }
+
+        String notificationPayload;
+        String contentType;
+        if ("android".equals(platform)) {
+            contentType = "application/json";
+            notificationPayload = "{\"data\":{\"message\":\"" + message + "\"}}";
+        } else if ("ios".equals(platform)) {
+            contentType = "application/json";
+            notificationPayload = "{\"aps\":{\"alert\":\"" + message + "\"}}";
+        } else {
+            System.err.println("❌ プラットフォームは android または ios を指定してください。");
+            return;
+        }
+
+        try {
+            String targetUri = endpoint + hubName + "/messages/?direct&api-version=2020-06";
+            URI uri = URI.create(targetUri);
+            String authHeader = generateSasToken(uri.toString(), sasKeyName, sasKey);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(uri)
+                    .header("Authorization", authHeader)
+                    .header("Content-Type", contentType)
+                    .header("ServiceBusNotification-Format", platform)
+                    .header("ServiceBusNotification-DeviceHandle", deviceToken)
+                    .POST(HttpRequest.BodyPublishers.ofString(notificationPayload))
+                    .build();
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            System.out.println("✅ HTTPステータスコード: " + response.statusCode());
+            System.out.println("📦 レスポンス内容: " + response.body());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                System.out.println("✅ 通知は正常に送信されました。");
+            } else {
+                System.out.println("❌ 通知の送信に失敗しました。ステータスコード: " + response.statusCode());
+            }
+
+        } catch (Exception e) {
+            System.err.println("❌ 送信中にエラーが発生しました: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // SASトークンを生成（簡易版）
+    private static String generateSasToken(String uri, String keyName, String key) throws Exception {
+        String encodedUri = java.net.URLEncoder.encode(uri, "UTF-8");
+        long expiry = System.currentTimeMillis() / 1000 + 3600;
+        String stringToSign = encodedUri + "\n" + expiry;
+        javax.crypto.Mac hmac = javax.crypto.Mac.getInstance("HmacSHA256");
+        hmac.init(new javax.crypto.spec.SecretKeySpec(key.getBytes("UTF-8"), "HmacSHA256"));
+        String signature = Base64.getEncoder().encodeToString(hmac.doFinal(stringToSign.getBytes("UTF-8")));
+        String token = "SharedAccessSignature sr=" + encodedUri +
+                "&sig=" + java.net.URLEncoder.encode(signature, "UTF-8") +
+                "&se=" + expiry + "&skn=" + keyName;
+        return token;
+    }
+}
+
+
+
+
+
