@@ -1,0 +1,92 @@
+# 共通部品詳細設計書：Azure Communication Service メール送信機能（SDK版）
+
+---
+
+## 1. 処理名
+
+- 日本語名：メール送信共通部品（Azure SDK）
+- 英語名：MailSenderComponent
+
+---
+
+## 2. 機能概要
+
+Azure Communication Services の Java SDK を使用し、送信先にメールを送る共通部品。
+送信結果は success / fail に応じたステータスコードとエラー内容を返却。
+
+---
+
+## 3. 入力仕様
+
+| 項目名（日本語）       | 項目名（英語）       | 型      | 必須 | 説明                                      |
+|------------------------|----------------------|---------|------|-------------------------------------------|
+| 接続文字列             | connectionString     | String  | 是   | Azure Communication Services の接続情報  |
+| 差出人メールアドレス   | fromAddress          | String  | 是   | 送信元のメールアドレス                    |
+| 宛先メールアドレス     | toAddress            | String  | 是   | 受信者のメールアドレス                    |
+| 件名                   | subject              | String  | 是   | メールの件名                              |
+| 本文（プレーン）       | plainTextBody        | String  | 否   | プレーンテキスト形式の本文               |
+| 本文（HTML）           | htmlBody             | String  | 否   | HTML形式の本文                            |
+
+※ `plainTextBody` または `htmlBody` のどちらか一方は必須。
+
+---
+
+## 4. 出力仕様（MailSendResult）
+
+| 項目名            | 型       | 説明                                 |
+|-------------------|----------|--------------------------------------|
+| result            | boolean  | true: 成功 / false: 失敗             |
+| statusCode        | String   | "Success", "InvalidToRecipients" 等 |
+| errorMessage      | String   | エラー詳細メッセージ（成功時は null）|
+
+---
+
+## 5. 想定されるエラーコード一覧（Azure SDK返却）
+
+| Azure Error Code             | 説明（日本語）                 | 取得可否 | 対応 message 例                       |
+|-----------------------------|-------------------------------|----------|---------------------------------------|
+| InvalidToRecipients         | 宛先メールアドレスが無効       | ✅可能    | The email address 'abc@invalid.com' is not valid. |
+| InvalidFromSenderAddress    | 差出人アドレスが未認証         | ✅可能    | The sender email address 'xxx@domain.com' is not verified. |
+| InvalidSubject              | 件名が空 or 不正形式           | ✅可能    | Subject cannot be empty.             |
+| MissingToRecipients         | 宛先が指定されていない         | ✅可能    | At least one 'to' recipient must be specified. |
+| DomainNotVerified           | ドメイン未認証                 | ✅可能    | The domain 'yourdomain.com' is not verified. |
+| DailyQuotaExceeded          | 送信クォータ超過（試用制限等） | ✅可能    | The daily email send quota has been exceeded. |
+| InvalidRequest              | リクエスト形式が不正           | ✅可能    | Request payload is not valid.        |
+| InternalServerError         | サーバー内部エラー             | ✅可能    | An unexpected error occurred. Please try again. |
+
+---
+
+## 6. 処理フロー（概要）
+
+1. 入力値バリデーション
+2. `EmailClient` インスタンス生成
+3. `EmailMessage` オブジェクト作成（件名 / 本文 / 宛先）
+4. `.send()` を実行
+5. 成功：
+    - result = true
+    - statusCode = "Success"
+    - errorMessage = null
+6. エラー発生時：
+    - result = false
+    - statusCode = SDK の error.code
+    - errorMessage = SDK の error.message
+
+---
+
+## 7. 例外処理
+
+| ケース                       | 処理内容                                           |
+|------------------------------|----------------------------------------------------|
+| 入力パラメータが null        | IllegalArgumentException を throw                 |
+| Azure SDK がエラー返却       | try-catch で捕捉し、MailSendResult に格納          |
+| 上記以外の想定外例外         | statusCode="InternalServerError" として返却       |
+
+---
+
+## 8. 備考
+
+- SDK は SMTP ステータスコードを返却しない（550 等は取得不可）
+- エラー分類は `EmailErrorException.getError()` から取得する
+- SDK バージョン： `@azure/communication-email` または Java 対応ライブラリ
+
+---
