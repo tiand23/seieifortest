@@ -145,7 +145,22 @@ Java SDKを使用することで、エラー処理やログ出力、例外制御
 特にバッチ処理や自動化されたデータ連携処理においては、ShellベースのCLIに比べて、**保守性・信頼性・拡張性が大きく向上します**。
 
 そのため、今回の実装ではJava SDKによるBlob操作を推奨いたします。
+### クラス物理名
 
+`OnlineNotificationSendCommandConsumer`
+
+### 機能概要
+
+本クラスは、非同期メッセージ基盤（ServiceBus等）を通じて送信される  
+`OnlineNotificationSendCommand` を受信し、対象の通知情報を元にオンライン通知処理を行うための非同期コンシューマークラスである。
+
+処理対象は以下の通り：
+
+- コマンドメッセージ中の通知ID等をもとに、通知内容をDBより取得
+- 取得した情報を元に、通知配信先への送信処理を実行
+- 処理結果をログとして記録し、必要に応じて共通エラー通報を行う
+
+本クラスには `@AsyncConsumer` および `@AsyncCommandListener(destination = "OnlineNotificationSendCommand")` アノテーションが付与されており、非同期イベントドリブンで処理が起動される。
 
 
 
